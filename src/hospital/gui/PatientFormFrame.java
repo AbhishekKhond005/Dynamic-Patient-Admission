@@ -2,6 +2,8 @@ package hospital.gui;
 
 import hospital.data.DataStore;
 import hospital.model.*;
+import hospital.service.TriageService;
+import hospital.service.TriageService.TriageEntry;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
@@ -21,13 +23,15 @@ public class PatientFormFrame {
     private JPanel panel;
     private JLabel nameLabel, ageLabel, genderLabel, roomLabel, departmentLabel, specialismLabel, dPatientLabel;
     private JTextField nameField, ageField, departPatientField;
-    private JComboBox<String> genderBox, roomBox, departmentBox, specialismBox;
+    private JComboBox<String> genderBox, roomBox, departmentBox, specialismBox, triageBox;
     private JButton submitBtn, findBedBtn, saveBtn, departBtn;
 
     private DataStore store;
+    private TriageService triageService;
 
     public PatientFormFrame() {
         store = DataStore.getInstance();
+        triageService = new TriageService();
         initializeUI();
     }
 
@@ -97,6 +101,21 @@ public class PatientFormFrame {
         c.gridx = 1; c.gridy = 2;
         panel.add(roomLabel, c);
 
+        JLabel triageLabel = createLabel("Triage Priority:", labelFont);
+        c.gridx = 1; c.gridy = 6;
+        panel.add(triageLabel, c);
+
+        triageBox = new JComboBox<>(new String[]{
+            "RESUSCITATION (Immediate)",
+            "EMERGENCY (Potential threat)",
+            "URGENT (Serious)",
+            "SEMI_URGENT (Minor)",
+            "NON_URGENT (Routine)"
+        });
+        styleCombo(triageBox, comboFont, fieldBg);
+        c.gridx = 1; c.gridy = 7;
+        panel.add(triageBox, c);
+
         String[] rooms = store.getRoomCategories().toArray(new String[0]);
         roomBox = new JComboBox<>(rooms);
         styleCombo(roomBox, comboFont, fieldBg);
@@ -120,7 +139,7 @@ public class PatientFormFrame {
         submitBtn.setBackground(accent);
         submitBtn.setForeground(Color.WHITE);
         submitBtn.addActionListener(e -> submitPatient());
-        c.gridx = 0; c.gridy = 6; c.gridwidth = 2; c.fill = GridBagConstraints.HORIZONTAL;
+        c.gridx = 0; c.gridy = 8; c.gridwidth = 2; c.fill = GridBagConstraints.HORIZONTAL;
         panel.add(submitBtn, c);
 
         findBedBtn = new JButton("Find Bed");
@@ -128,7 +147,7 @@ public class PatientFormFrame {
         findBedBtn.setBackground(accent);
         findBedBtn.setForeground(Color.WHITE);
         findBedBtn.addActionListener(e -> assignBed());
-        c.gridx = 0; c.gridy = 7; c.gridwidth = 2;
+        c.gridx = 0; c.gridy = 9; c.gridwidth = 2;
         panel.add(findBedBtn, c);
 
         saveBtn = new JButton("Save");
@@ -136,15 +155,15 @@ public class PatientFormFrame {
         saveBtn.setBackground(accent);
         saveBtn.setForeground(Color.WHITE);
         saveBtn.addActionListener(e -> savePatientDetails());
-        c.gridx = 0; c.gridy = 8; c.gridwidth = 2;
+        c.gridx = 0; c.gridy = 10; c.gridwidth = 2;
         panel.add(saveBtn, c);
 
         dPatientLabel = createLabel("Depart Patient:", labelFont);
-        c.gridx = 0; c.gridy = 9; c.gridwidth = 1;
+        c.gridx = 0; c.gridy = 11; c.gridwidth = 1;
         panel.add(dPatientLabel, c);
 
         departPatientField = createField(buttonFont, fieldBg);
-        c.gridx = 0; c.gridy = 10; c.gridwidth = 2; c.fill = GridBagConstraints.HORIZONTAL;
+        c.gridx = 0; c.gridy = 12; c.gridwidth = 2; c.fill = GridBagConstraints.HORIZONTAL;
         panel.add(departPatientField, c);
 
         departBtn = new JButton("Depart");
@@ -152,7 +171,7 @@ public class PatientFormFrame {
         departBtn.setBackground(accent);
         departBtn.setForeground(Color.WHITE);
         departBtn.addActionListener(e -> departPatient());
-        c.gridx = 0; c.gridy = 11; c.gridwidth = 2;
+        c.gridx = 0; c.gridy = 13; c.gridwidth = 2;
         panel.add(departBtn, c);
 
         frame.add(panel);
@@ -193,15 +212,21 @@ public class PatientFormFrame {
         String roomCat = (String) roomBox.getSelectedItem();
 
         Patient p = new Patient(name, age, gender, dept, roomCat, spec);
+        int triageIdx = triageBox.getSelectedIndex();
+        TriagePriority priority = TriagePriority.values()[triageIdx];
+        p.setTriagePriority(priority);
         store.addToPatientQueue(p);
-        JOptionPane.showMessageDialog(frame, "Patient added: " + name);
+        triageService.enqueue(p, priority);
+        JOptionPane.showMessageDialog(frame, "Patient added: " + name + " [" + priority.name() + "]");
         nameField.setText("");
         ageField.setText("");
     }
 
     private void assignBed() {
-        Patient p = store.pollFirstPatient();
-        if (p == null) { JOptionPane.showMessageDialog(frame, "No patients in queue"); return; }
+        TriageEntry entry = triageService.dequeue();
+        if (entry == null) { JOptionPane.showMessageDialog(frame, "No patients in queue"); return; }
+        Patient p = entry.getPatient();
+        store.getPatientQueue().remove(p);
 
         java.util.List<Bed> candidates = store.getAvailableBedsFor(
                 p.getDepartmentNeeded(), p.getSpecialismNeeded(), p.getPreferredRoomCategory());
