@@ -1,6 +1,7 @@
 package hospital.data;
 
 import hospital.model.*;
+import hospital.service.WardGraph;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -15,6 +16,8 @@ public class DataStore {
     private Map<Patient, Bed> assignmentMap;
     private List<String> roomCategories;
     private Map<String, List<String>> deptSpecialisms;
+    private List<PatientStay> stayHistory;
+    private BedIndex bedIndex;
 
     private DataStore() {
         departments = new ArrayList<>();
@@ -24,6 +27,8 @@ public class DataStore {
         assignmentMap = new HashMap<>();
         roomCategories = new ArrayList<>();
         deptSpecialisms = new HashMap<>();
+        stayHistory = new ArrayList<>();
+        bedIndex = new BedIndex();
     }
 
     public static synchronized DataStore getInstance() {
@@ -37,7 +42,10 @@ public class DataStore {
 
     public void addDepartment(Department d) { departments.add(d); }
     public void addRoom(Room r) { rooms.add(r); }
-    public void addBed(Bed b) { beds.add(b); }
+    public void addBed(Bed b) {
+        beds.add(b);
+        bedIndex.indexBed(b);
+    }
 
     public List<Department> getDepartments() { return departments; }
     public List<Room> getRooms() { return rooms; }
@@ -94,6 +102,8 @@ public class DataStore {
     public void assignBed(Patient p, Bed b) {
         assignmentMap.put(p, b);
         b.setState(BedState.OCCUPIED);
+        stayHistory.add(new PatientStay(p, b));
+        bedIndex.updateState(b, BedState.AVAILABLE);
     }
 
     public Map<Patient, Bed> getAssignmentMap() { return assignmentMap; }
@@ -102,17 +112,41 @@ public class DataStore {
 
     public void freeBed(Bed bed) {
         bed.setState(BedState.AVAILABLE);
+        bedIndex.updateState(bed, BedState.OCCUPIED);
         assignmentMap.entrySet().removeIf(e -> e.getValue().equals(bed));
     }
 
     public void freeBedByPatientName(String patientName) {
         for (Map.Entry<Patient, Bed> e : assignmentMap.entrySet()) {
             if (e.getKey().getPatientName().equals(patientName)) {
-                e.getValue().setState(BedState.AVAILABLE);
+                Bed bed = e.getValue();
+                bed.setState(BedState.AVAILABLE);
+                bedIndex.updateState(bed, BedState.OCCUPIED);
+                for (PatientStay stay : stayHistory) {
+                    if (stay.getPatient().equals(e.getKey()) && stay.isActive()) {
+                        stay.discharge();
+                    }
+                }
                 assignmentMap.remove(e.getKey());
                 return;
             }
         }
+    }
+
+    public BedIndex getBedIndex() {
+        return bedIndex;
+    }
+
+    public List<PatientStay> getStayHistory() {
+        return Collections.unmodifiableList(stayHistory);
+    }
+
+    public List<PatientStay> getActiveStays() {
+        List<PatientStay> active = new ArrayList<>();
+        for (PatientStay stay : stayHistory) {
+            if (stay.isActive()) active.add(stay);
+        }
+        return active;
     }
 
     public Bed findPatientBed(String patientName) {
@@ -142,4 +176,12 @@ public class DataStore {
     public int getTotalBedCount() { return beds.size(); }
     public int getAvailableBedCount() { return (int) beds.stream().filter(Bed::isAvailable).count(); }
     public int getOccupiedBedCount() { return assignmentMap.size(); }
+
+    public WardGraph buildWardGraph() {
+        WardGraph graph = new WardGraph();
+        for (Room room : rooms) {
+            graph.addBidirectionalEdges(room);
+        }
+        return graph;
+    }
 }

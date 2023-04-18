@@ -57,6 +57,7 @@ public class HospitalDataLoader {
             }
 
             store.buildRoomCategoryList();
+            store.getBedIndex().index(store.getBeds());
         } catch (Exception e) {
             e.printStackTrace();
         }
