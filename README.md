@@ -1,15 +1,15 @@
 # Dynamic Patient Admission
 
-A Java-based desktop application for real-time hospital bed management, patient triage, and occupancy tracking. Designed to address bed allocation challenges in resource-limited settings, inspired by the study *"An evaluation of bed management in a rural hospital adjacent to Indo-Nepal border in West Bengal"*.
+A Java-based desktop application for real-time hospital bed management, patient triage, and occupancy tracking. Designed to address bed allocation challenges in settings with limited capacity, seasonal demand surges, and mixed emergency-elective patient inflow.
 
 ---
 
 ## Context
 
-Rural hospitals near the Indo-Nepal border face unique bed management challenges:
+Facilities operating near capacity face recurring bed management challenges:
 - **Limited bed capacity** with seasonal patient surges
 - **Mixed emergency/elective** patient flow requiring triage-based allocation
-- **Cross-border patient movement** adding unpredictability
+- **Cross-regional patient movement** adding unpredictability
 - **Manual bed tracking** leading to inefficiencies and delays
 
 This system provides a digital decision-support tool for real-time allocation, prioritisation, and occupancy monitoring in such constraint-heavy environments.
