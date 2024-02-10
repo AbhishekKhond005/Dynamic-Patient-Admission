@@ -62,18 +62,3 @@ This system provides a digital decision-support tool for real-time allocation, p
 
 ### Data Format
 `hospital_data.xlsx` columns: `DeptID | DeptName | Specialism | RoomName | RoomCategory | BedName`
-
----
-
-## Commits Timeline
-
-```
-2020-04-20  Package restructure (model, data, gui)
-2020-08-15  N-ary tree hierarchy
-2021-01-10  PriorityQueue triage system
-2021-06-25  Bed adjacency graph with BFS
-2022-02-14  HashMap indexing layer
-2022-09-01  Strategy pattern for assignment
-2023-04-18  Patient lifecycle & departure
-2024-01-30  Rural hospital context & docs
-```
